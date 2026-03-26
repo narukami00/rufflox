@@ -1,0 +1,21 @@
+{
+  "languages": {
+    "Java": {
+      "language_servers": ["jdtls"],
+      "formatter": "language_server",
+    },
+  },
+  "lsp": {
+    "jdtls": {
+      "initialization_options": {
+        "settings": {
+          "java": {
+            "project": {
+              "sourcePaths": ["."],
+            },
+          },
+        },
+      },
+    },
+  },
+}
