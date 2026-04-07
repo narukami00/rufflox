@@ -63,6 +63,8 @@ class Scanner{
             case '+': addToken(PLUS); break;
             case ';': addToken(SEMICOLON); break;
             case '*': addToken(STAR); break;
+            case '?': addToken(QUESTION); break; // Challenge 4 - adding two new cases to the switch statement
+            case ':': addToken(COLON); break; // now the scanner knows what ? and : means
             case '!':
                 addToken(match('=')?BANG_EQUAL:BANG);
                 break;
@@ -79,7 +81,10 @@ class Scanner{
                 if(match('/')){
                     // A comment goes until the end of the line
                     while(peek()!='\n' && !isAtEnd())advance();
-                }else{
+                }else if(match('*')){
+                    blockComment();
+                }
+                else{
                     addToken(SLASH);
                 }
                 break;
@@ -101,6 +106,33 @@ class Scanner{
                 }
                 break;
         }
+    }
+
+    // Challenge 1: Implement nested multi-line comment blocks
+
+    private void blockComment(){
+        int nesting=1;
+        while(nesting>0 && !isAtEnd()){
+            if(peek()=='/' && peekNext()=='*'){
+                consumeStarSlash();
+                nesting++;
+            }else if(peek()=='*' && peekNext()=='/'){
+                consumeStarSlash();
+                nesting--;
+            }else if(peek()=='\n'){
+                line++;
+                advance();
+            }else advance();
+        }
+
+        if(isAtEnd() && nesting>0){
+            Lox.error(line, "Unterminated block comment.");
+        }
+    }
+
+    private void consumeStarSlash(){
+        advance();
+        advance();
     }
 
     private void identifier(){

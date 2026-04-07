@@ -13,6 +13,8 @@ enum TokenType {
     SEMICOLON,
     SLASH,
     STAR,
+    QUESTION, // Challenge 4: implementing C style ternary operator
+    COLON, // first added the two new token types
 
     // One or two character tokens
     BANG,
