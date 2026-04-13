@@ -25,8 +25,40 @@ class Parser {
         return statements;
     }
 
+    // Chapter 8 - challenge 1 :
+    /*
+    * The REPL no longer supports entering a single expression and automatically
+    printing its result value. That’s a drag. Add support to the REPL to let users type in
+    both statements and expressions. If they enter a statement, execute it. If they enter
+    an expression, evaluate it and display the result value.
+    * */
+
+    Object parseRepl() {
+        try {
+            if (peek().type == VAR || peek().type == PRINT || peek().type == LEFT_BRACE) {
+                return parse();
+            }
+
+            Expr expr = expression();
+
+            if (check(SEMICOLON)) {
+                return parse();
+            }
+
+            if (isAtEnd()) {
+                return expr;
+            }
+
+            return parse();
+        } catch (ParseError error) {
+            return null;
+        }
+    }
+
+
     private Stmt statement(){
         if(match(PRINT)) return printStatement();
+        if (match(LEFT_BRACE)) return new Stmt.Block(block());
 
         return expressionStatement();
     }
@@ -56,22 +88,31 @@ class Parser {
         return new Stmt.Expression(expr);
     }
 
-    private Expr expression(){
-        //return equality();
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
+        while (!check(RIGHT_BRACE) && !isAtEnd()) {
+            statements.add(declaration());
+        }
+        consume(RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
+    }
 
-        //Challenge 5 - handling each binary operator (which cannot be unary)
-        // without a left hand operand - but also parse and discard a right
-        // hand operand with appropriate precedence
+    private Expr assignment(){
+        Expr expr = ternary();
+        if (match(EQUAL)) {
+            Token equals = previous();
+            Expr value = assignment(); // Recursive call for right-associativity
+            if (expr instanceof Expr.Variable) {
+                Token name = ((Expr.Variable)expr).name;
+                return new Expr.Assign(name, value);
+            }
+            error(equals, "Invalid assignment target.");
+        }
+        return expr;
 
-        //We use appropriate precedence level functions at each of the binary operators we find
-        // because if we used expressions for everything, that would eat too much
-        // of the following code, producing more errors
 
-        // We are ensuring that the error correction only swallows exactly
-        // what that specific operator would have taken if it were valid,
-        // leaving the rest of the line intact for other corrections to do their job
-
-        if(match(BANG_EQUAL,EQUAL_EQUAL)){
+        /* Where will this go which was previously in expression() ?
+        *  if(match(BANG_EQUAL,EQUAL_EQUAL)){
             error(peek(),"Binary operator at the start of expression.");
             equality();
             return null;
@@ -97,7 +138,53 @@ class Parser {
 
         // Challenge 3: add support for C style comma seperated expressions
         return comma();
+        * */
     }
+
+    private Expr expression(){
+        //return equality();
+
+        //Challenge 5 - handling each binary operator (which cannot be unary)
+        // without a left hand operand - but also parse and discard a right
+        // hand operand with appropriate precedence
+
+        //We use appropriate precedence level functions at each of the binary operators we find
+        // because if we used expressions for everything, that would eat too much
+        // of the following code, producing more errors
+
+        // We are ensuring that the error correction only swallows exactly
+        // what that specific operator would have taken if it were valid,
+        // leaving the rest of the line intact for other corrections to do their job
+
+            if (match(BANG_EQUAL, EQUAL_EQUAL)) {
+                error(peek(), "Binary operator at the start of expression.");
+                equality();
+                return null;
+            }
+
+            if (match(GREATER_EQUAL, GREATER, LESS, LESS_EQUAL)) {
+                error(peek(), "Binary operator at the start of expression.");
+                comparison();
+                return null;
+            }
+
+            if (match(PLUS)) {
+                error(peek(), "Binary operator at the start of expression.");
+                term();
+                return null;
+            }
+
+            if (match(SLASH, STAR)) {
+                error(peek(), "Binary operator at the start of expression.");
+                factor();
+                return null;
+            }
+
+            return comma();
+
+    }
+
+
 
     private Stmt declaration(){
         try{
@@ -111,11 +198,10 @@ class Parser {
     }
 
     private Expr comma(){
-        Expr expr = ternary();
-
-        while(match(COMMA)){
+        Expr expr = assignment();
+        while (match(COMMA)) {
             Token operator = previous();
-            Expr right = ternary();
+            Expr right = assignment();
             expr = new Expr.Binary(expr, operator, right);
         }
         return expr;
@@ -272,5 +358,4 @@ class Parser {
             advance();
         }
     }
-
 }

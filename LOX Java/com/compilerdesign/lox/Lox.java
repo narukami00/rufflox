@@ -27,7 +27,7 @@ public class Lox {
 
     private static void runFile(String path) throws IOException {
         byte[] bytes = Files.readAllBytes(Paths.get(path));
-        run(new String(bytes, Charset.defaultCharset()));
+        run(new String(bytes, Charset.defaultCharset()),false);
         if (hadError)
             System.exit(65);
 
@@ -45,22 +45,31 @@ public class Lox {
             String line = reader.readLine();
             if (line == null)
                 break;
-            run(line);
+            run(line, true);
             hadError = false;
         }
     }
 
-    private static void run(String source) {
+    // Modifying the run method for Chapter 8, Challenge 1.
+    private static void run(String source, boolean isRepl) {
         Scanner scanner = new Scanner(source);
         List<Token> tokens = scanner.scanTokens();
         Parser parser = new Parser(tokens);
-        List<Stmt> statements= parser.parse();
 
-        if(hadError) return;
+        //  Use parseRepl if we are in the REPL prompt
+        Object result = isRepl ? parser.parseRepl() : parser.parse();
+        if (hadError) return;
+        if (result == null) return;
 
 
-        //System.out.println(new AstPrinter().print(expression));
-        interpreter.interpret(statements);
+        // Dispatch based on what the parser found
+        if (result instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Stmt> statements = (List<Stmt>) result;
+            interpreter.interpret(statements);
+        } else if (result instanceof Expr) {
+            interpreter.interpret((Expr) result);
+        }
     }
 
     static void error(int line, String message) {
@@ -69,7 +78,7 @@ public class Lox {
 
     private static void report(int line, String where, String message) {
         System.err.println(
-                "[line ]" + line + " ] Error" + where + ": " + message);
+                "[line " + line + " ] Error" + where + ": " + message);
         hadError = true;
     }
 

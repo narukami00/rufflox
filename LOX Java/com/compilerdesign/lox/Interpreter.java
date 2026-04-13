@@ -15,6 +15,17 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             Lox.runtimeError(error);
         }
     }
+
+    void interpret(Expr expr) {
+        try {
+            Object value = evaluate(expr);
+            System.out.println(stringify(value));
+        } catch (RuntimeError error) {
+            Lox.runtimeError(error);
+        }
+    }
+
+
     private String stringify(Object object){
         if(object==null) return "nil";
 
@@ -85,6 +96,25 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         stmt.accept(this);
     }
 
+    void executeBlock(List<Stmt> statements,
+                      Environment environment) {
+        Environment previous = this.environment;
+        try {
+            this.environment = environment;
+            for (Stmt statement : statements) {
+                execute(statement);
+            }
+        } finally {
+            this.environment = previous;
+        }
+    }
+
+    @Override
+    public Void visitBlockStmt(Stmt.Block stmt) {
+        executeBlock(stmt.statements, new Environment(environment));
+        return null;
+    }
+
     @Override
     public Void visitExpressionStmt(Stmt.Expression stmt){
         evaluate(stmt.expression);
@@ -100,13 +130,20 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVarStmt(Stmt.Var stmt){
-        Object value = null;
+        Object value = Environment.UNINITIALIZED;
         if(stmt.initializer!=null){
             value=evaluate(stmt.initializer);
         }
 
         environment.define(stmt.name.lexeme, value);
         return null;
+    }
+
+    @Override
+    public Object visitAssignExpr(Expr.Assign expr){
+        Object value=evaluate(expr.value);
+        environment.assign(expr.name,value);
+        return value;
     }
 
     @Override
@@ -122,6 +159,8 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         // Challenge 6: Extending to lexicographical String comparisions
 
         switch (expr.operator.type){
+            case COMMA:
+                return right;
             case GREATER:
                 if (left instanceof Double && right instanceof Double) {
                     return (double)left > (double)right;
